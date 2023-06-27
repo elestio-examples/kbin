@@ -1,172 +1,180 @@
-version: "3.4"
+# version: "3.9"
+
+# services:
+#   kbin:
+#     image: elestio4test/kbin:latest
+#     restart: always
+#     ports:
+#       - 172.17.0.1:3080:9001
+#     volumes:
+#       - ./media:/var/www/kbin/public/media
+#     env_file:
+#       - .env
+#     depends_on:
+#       - redis
+#       - db
+#       - rabbitmq
+#       - mercure
+
+#   redis:
+#     image: redis
+#     restart: always
+#     volumes:
+#       - ./redis:/data
+#     environment:
+#       - REDIS_PASSWORD=${REDIS_PASSWORD}
+#     command: /bin/sh -c "redis-server --requirepass $${REDIS_PASSWORD}"
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+
+#   db:
+#     image: postgres:13-bullseye
+#     restart: always
+#     env_file:
+#       - .env
+#     environment:
+#       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+#       - POSTGRES_DB=kbin
+#       - POSTGRES_USER=kbin
+#     volumes:
+#       - ./postgres:/var/lib/postgresql/data
+
+#   rabbitmq:
+#     image: rabbitmq:3-management
+#     restart: always
+#     environment:
+#       - RABBITMQ_DEFAULT_USER=kbin
+#       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+#       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+#     volumes:
+#       - ./rabbitmq:/var/lib/rabbitmq
+#     ports:
+#       - 15672:15672
+
+#   mercure:
+#     image: dunglas/mercure
+#     restart: always
+#     env_file:
+#       - .env
+#     environment:
+#       - MERCURE_JWT_SECRET=${MERCURE_JWT_SECRET}
+#       - SERVER_NAME=:80
+#       - MERCURE_TRANSPORT_URL=bolt:///data/mercure.db
+#       - MERCURE_PUBLISHER_JWT_KEY=${MERCURE_JWT_SECRET}
+#       - MERCURE_SUBSCRIBER_JWT_KEY=${MERCURE_JWT_SECRET}
+#       - MERCURE_EXTRA_DIRECTIVES= |-
+#         anonymous
+#         subscriptions
+#     volumes:
+#       - ./mercure_config:/config
+#       - ./mercure_data:/data
+
+version: "3.9"
 
 services:
-  php:
-    image: elestio4test/kbin_php:latest
-    # build:
-    #   context: .
-    #   target: app_php
-    #   args:
-    #     SYMFONY_VERSION: ${SYMFONY_VERSION:-}
-    #     STABILITY: ${STABILITY:-stable}
+  www:
+    image: elestio4test/kbin:latest
     restart: always
-    volumes:
-      - ./php_socket:/var/run/php
-      # - ./:/srv/app
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     healthcheck:
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 30s
+      test: ["CMD-SHELL", "curl -f http://localhost:2019/metrics || exit 1"]
+    ports:
+      - 172.17.0.1:3080:80
+    volumes:
+      - ./storage/caddy_config:/config
+      - ./storage/caddy_data:/data
     environment:
-      # Run "composer require symfony/orm-pack" to install and configure Doctrine ORM
-      DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
-      # Run "composer require symfony/mercure-bundle" to install and configure the Mercure integration
-      MERCURE_URL: ${CADDY_MERCURE_URL:-http://caddy/.well-known/mercure}
-      MERCURE_PUBLIC_URL: https://${DOMAIN}/.well-known/mercure
-      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-!ChangeThisRedisPass!}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
-      RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
-      APP_SECRET: ${APP_SECRET}
+      - SERVER_NAME=:80 # the addresss that the web server binds
+      - PHP_FASTCGI_HOST=php:9000 # caddy forward traffic to this host via fastcgi
+      - MERCURE_PUBLISHER_JWT_KEY=${MERCURE_JWT_SECRET}
+      - MERCURE_SUBSCRIBER_JWT_KEY=${MERCURE_JWT_SECRET}
+      - MERCURE_JWT_SECRET=${MERCURE_JWT_SECRET}
+    depends_on:
+      - php
+
+  php:
+    image: elestio4test/kbin:latest
+    restart: always
+    command: php-fpm
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "REQUEST_METHOD=GET SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping cgi-fcgi -bind -connect localhost:9000 || exit 1",
+        ]
+    volumes:
+      - ./storage/media:/var/www/kbin/public/media
+    env_file:
+      - .env
     depends_on:
       - redis
+      - db
       - rabbitmq
 
-  caddy:
-    image: elestio4test/kbin_caddy:latest
-    # build:
-    #   context: .
-    #   target: app_caddy
-    depends_on:
-      - php
-    environment:
-      SERVER_NAME: ${DOMAIN}
-      MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-      MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+  messenger:
+    image: elestio4test/kbin:latest
     restart: always
-    volumes:
-      - ./php_socket:/var/run/php
-      - ./caddy_data:/data
-      - ./caddy_config:/config
-      # - ./:/srv/app:ro
-    ports:
-      # HTTP
-      - 172.17.0.1:3080:80
-      # # HTTPS
-      # - target: 443
-      #   published: ${HTTPS_PORT:-443}
-      #   protocol: tcp
-      # # HTTP/3
-      # - target: 443
-      #   published: ${HTTP3_PORT:-443}
-      #   protocol: udp
-
-  redis:
-    image: redis:7.0.11-alpine
-    restart: always
-    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD:-!ChangeThisRedisPass!} --maxmemory-policy volatile-ttl
-    volumes:
-      - ./redis-data:/data
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    hostname: kbin-rabbitmq
-    restart: always
-    environment:
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-kbin}
-    volumes:
-      - ./rabbitmq-data:/var/lib/rabbitmq
-    ports:
-      - 5672:5672
-      - 15672:15672
-
-  messenger_kbin:
-    user: "82:82"
-    image: elestio4test/kbin_messenger:latest
-    # build:
-    #   context: .
-    #   target: symfony_messenger
-    command: 'sh -c "php bin/console messenger:consume async --time-limit=3600"'
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
-      MERCURE_URL: ${CADDY_MERCURE_URL:-http://caddy/.well-known/mercure}
-      MERCURE_PUBLIC_URL: https://${DOMAIN}/.well-known/mercure
-      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-!ChangeThisRedisPass!}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
-      RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
-    volumes:
-      # - ./:/srv/app
-      - ./php_socket:/var/run/php
+    command: bin/console messenger:consume async --time-limit=3600
     healthcheck:
-      interval: 20s
-      timeout: 3s
-      retries: 3
-      start_period: 30s
-    restart: always
+      test: ["CMD-SHELL", "ps aux | grep 'messenger[:]consume' || exit 1"]
+    env_file:
+      - .env
     depends_on:
-      - php
+      - redis
+      - db
+      - rabbitmq
 
   messenger_ap:
-    user: "82:82"
-    image: elestio4test/kbin_messenger_app:latest
-    # build:
-    #   context: .
-    #   target: symfony_messenger
-    command: 'sh -c "php bin/console messenger:consume async_ap --time-limit=3600"'
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-kbin}:${POSTGRES_PASSWORD:-ChangeMe}@database:5432/${POSTGRES_DB:-kbin}?serverVersion=${POSTGRES_VERSION:-13}&charset=${POSTGRES_CHARSET:-utf8}
-      MERCURE_URL: ${CADDY_MERCURE_URL:-http://caddy/.well-known/mercure}
-      MERCURE_PUBLIC_URL: https://${DOMAIN}/.well-known/mercure
-      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-!ChangeThisRedisPass!}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-!ChangeThisRabbitPass!}
-      RABBITMQ_USER: ${RABBITMQ_USER:-kbin}
-    volumes:
-      # - ./:/srv/app
-      - ./php_socket:/var/run/php
-    healthcheck:
-      interval: 20s
-      timeout: 3s
-      retries: 3
-      start_period: 30s
+    image: elestio4test/kbin:latest
     restart: always
+    command: bin/console messenger:consume async_ap --time-limit=3600
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'messenger[:]consume' || exit 1"]
+    env_file:
+      - .env
     depends_on:
-      - php
+      - redis
+      - db
       - rabbitmq
 
-  ###> doctrine/doctrine-bundle ###
-  database:
-    image: postgres:${POSTGRES_VERSION:-13}-alpine
+  redis:
+    image: redis:alpine
+    restart: always
+    command: /bin/sh -c "redis-server --requirepass $${REDIS_PASSWORD}"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-kbin}
-      # You should definitely change the password in production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMe}
-      POSTGRES_USER: ${POSTGRES_USER:-kbin}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
-      - ./db-data:/var/lib/postgresql/data:rw
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
-      # - ./docker/db/data:/var/lib/postgresql/data:rw
+      - ./storage/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+  db:
+    image: postgres:13-alpine
+    restart: always
+    volumes:
+      - ./storage/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=kbin
+      - POSTGRES_USER=kbin
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=kbin
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - ./storage/rabbitmq:/var/lib/rabbitmq
     ports:
-      - "5433:5432"
-###< doctrine/doctrine-bundle ###
+      - 15672:15672
 
-# Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
-###> symfony/mercure-bundle ###
-###< symfony/mercure-bundle ###
-
-# volumes:
-#   php_socket:
-#   caddy_data:
-#   caddy_config:
-#   db-data:
-#   rabbitmq-data:
-#   redis-data:
+  # Add your favorite reverse proxy (e.g nginx) which accept incoming HTTPS
+  # traffic and forward to http://www:80
+  # nginx:
+  #  image: nginx
+  #  ports:
+  #    - 443:443
+  #  volumes:
+  #    - ./nginx.conf:/etc/nginx/nginx.conf
