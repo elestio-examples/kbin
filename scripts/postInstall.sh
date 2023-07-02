@@ -6,6 +6,6 @@ echo "Waiting for software to be ready ..."
 sleep 30s;
 
 # Create new user (without email verification)
-docker-compose exec php bin/console kbin:user:create admin ${ADMIN_EMAIL} ${ADMIN_PASSWORD}
+docker-compose exec -T php bin/console kbin:user:create admin ${ADMIN_EMAIL} ${ADMIN_PASSWORD}
 # Grant administrator privileges
-docker-compose exec php bin/console kbin:user:admin admin
+docker-compose exec -T php bin/console kbin:user:admin admin
