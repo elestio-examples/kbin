@@ -68,6 +68,7 @@ Here are some example snippets to help you get started creating a container.
             volumes:
                 - ./storage/caddy_config:/config
                 - ./storage/caddy_data:/data
+                - ./storage/media:/var/www/kbin/public/media
             environment:
                 - SERVER_NAME=:80 # the addresss that the web server binds
                 - PHP_FASTCGI_HOST=php:9000 # caddy forward traffic to this host via fastcgi
