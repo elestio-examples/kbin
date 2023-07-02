@@ -117,7 +117,7 @@ environments:
   - key: "MERCURE_JWT_SECRET"
     value: "random_password"
   - key: "CADDY_MERCURE_URL"
-    value: "https://example.com/.well-known/mercure"
+    value: "https://[CI_CD_DOMAIN]/.well-known/mercure"
   - key: "CADDY_MERCURE_JWT_SECRET"
     value: "random_password"
   - key: "CORS_ALLOW_ORIGIN"

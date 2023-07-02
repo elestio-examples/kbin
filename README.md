@@ -26,7 +26,7 @@ By default we setup a CNAME on elestio.app domain, but probably you will want to
 
 **_Step2:_** update the env vars to indicate your custom domain
 Open Elestio dashboard > Service overview > click on UPDATE CONFIG button > Env tab
-there update `DOMAIN`, `BASE_URL`, `SERVER_NAME`, `KBIN_DOMAIN`, `KBIN_STORAGE_URL` & `MERCURE_PUBLIC_URL` with your real domain
+there update `DOMAIN`, `BASE_URL`, `SERVER_NAME`, `KBIN_DOMAIN`, `KBIN_STORAGE_URL`, `MERCURE_PUBLIC_URL` & `CADDY_MERCURE_URL` with your real domain
 
 **_Step3:_** you must reset the KBIN instance DB, you can do that with those commands, connect over SSH and run this:
 
