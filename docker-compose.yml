@@ -3,7 +3,7 @@ version: "3.3"
 services:
   www:
     user: 0:0
-    image: elestio4test/kbin:latest
+    image: elestio/kbin:latest
     restart: always
     command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     healthcheck:
@@ -24,7 +24,7 @@ services:
       - php
 
   php:
-    image: elestio4test/kbin:latest
+    image: elestio/kbin:latest
     restart: always
     command: php-fpm
     healthcheck:
@@ -43,7 +43,7 @@ services:
       - rabbitmq
 
   messenger:
-    image: elestio4test/kbin:latest
+    image: elestio/kbin:latest
     restart: always
     command: bin/console messenger:consume async --time-limit=3600
     healthcheck:
@@ -56,7 +56,7 @@ services:
       - rabbitmq
 
   messenger_ap:
-    image: elestio4test/kbin:latest
+    image: elestio/kbin:latest
     restart: always
     command: bin/console messenger:consume async_ap --time-limit=3600
     healthcheck:
