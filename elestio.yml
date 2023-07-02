@@ -7,6 +7,14 @@ ports:
     public: true
     path: "/"
     isAuth: false
+  - protocol: "HTTPS"
+    targetProtocol: "HTTP"
+    listeningPort: "8443"
+    targetPort: "15672"
+    targetIP: "172.17.0.1"
+    public: true
+    path: "/"
+    isAuth: false
 environments:
   - key: "ADMIN_PASSWORD"
     value: "random_password"
@@ -45,7 +53,7 @@ environments:
   - key: "KBIN_API_ITEMS_PER_PAGE"
     value: "25"
   - key: "KBIN_STORAGE_URL"
-    value: "https://media.kbin.pub"
+    value: "https://[CI_CD_DOMAIN]"
   - key: "KBIN_META_TITLE"
     value: "Kbin_Lab"
   - key: "KBIN_META_DESCRIPTION"
@@ -126,6 +134,8 @@ environments:
     value: ""
   - key: "HCAPTCHA_SECRET"
     value: ""
+  - key: "HTTPS"
+    value: "true"
 
 config:
   runTime: "dockerCompose"
