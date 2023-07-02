@@ -2,6 +2,7 @@ version: "3.3"
 
 services:
   www:
+    user: 0:0
     image: elestio4test/kbin:latest
     restart: always
     command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile

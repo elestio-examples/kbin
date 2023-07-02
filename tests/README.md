@@ -57,6 +57,7 @@ Here are some example snippets to help you get started creating a container.
 
     services:
         www:
+            user: 0:0
             image: elestio4test/kbin:latest
             restart: always
             command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
