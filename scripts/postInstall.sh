@@ -9,3 +9,5 @@ sleep 30s;
 docker-compose exec -T php bin/console kbin:user:create admin ${ADMIN_EMAIL} ${ADMIN_PASSWORD}
 # Grant administrator privileges
 docker-compose exec -T php bin/console kbin:user:admin admin
+
+docker-compose exec -T php bin/console kbin:ap:keys:update
