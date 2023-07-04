@@ -6,8 +6,6 @@ services:
     image: elestio/kbin:${SOFTWARE_VERSION_TAG}
     restart: always
     command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:2019/metrics || exit 1"]
     ports:
       - 172.17.0.1:3080:80
     volumes:
@@ -27,12 +25,6 @@ services:
     image: elestio/kbin:${SOFTWARE_VERSION_TAG}
     restart: always
     command: php-fpm
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "REQUEST_METHOD=GET SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping cgi-fcgi -bind -connect localhost:9000 || exit 1",
-        ]
     volumes:
       - ./storage/media:/var/www/kbin/public/media
     env_file:
@@ -46,8 +38,6 @@ services:
     image: elestio/kbin:${SOFTWARE_VERSION_TAG}
     restart: always
     command: bin/console messenger:consume async --time-limit=3600
-    healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep 'messenger[:]consume' || exit 1"]
     env_file:
       - .env
     depends_on:
@@ -59,8 +49,6 @@ services:
     image: elestio/kbin:${SOFTWARE_VERSION_TAG}
     restart: always
     command: bin/console messenger:consume async_ap --time-limit=3600
-    healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep 'messenger[:]consume' || exit 1"]
     env_file:
       - .env
     depends_on:
@@ -76,8 +64,6 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
       - ./storage/redis:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
 
   db:
     image: postgres:13-alpine
@@ -98,8 +84,6 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     volumes:
       - ./storage/rabbitmq:/var/lib/rabbitmq
-    ports:
-      - 172.17.0.1:15672:15672
 
   # Add your favorite reverse proxy (e.g nginx) which accept incoming HTTPS
   # traffic and forward to http://www:80
