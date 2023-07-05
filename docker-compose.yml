@@ -39,6 +39,8 @@ services:
     restart: always
     command: bin/console messenger:consume async --time-limit=3600
     volumes:
+      - ./storage/caddy_config:/config
+      - ./storage/caddy_data:/data
       - ./storage/media:/var/www/kbin/public/media
     env_file:
       - .env
@@ -52,6 +54,8 @@ services:
     restart: always
     command: bin/console messenger:consume async_ap --time-limit=3600
     volumes:
+      - ./storage/caddy_config:/config
+      - ./storage/caddy_data:/data
       - ./storage/media:/var/www/kbin/public/media
     env_file:
       - .env
