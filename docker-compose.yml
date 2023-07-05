@@ -38,6 +38,8 @@ services:
     image: elestio/kbin:${SOFTWARE_VERSION_TAG}
     restart: always
     command: bin/console messenger:consume async --time-limit=3600
+    volumes:
+      - ./storage/media:/var/www/kbin/public/media
     env_file:
       - .env
     depends_on:
@@ -49,6 +51,8 @@ services:
     image: elestio/kbin:${SOFTWARE_VERSION_TAG}
     restart: always
     command: bin/console messenger:consume async_ap --time-limit=3600
+    volumes:
+      - ./storage/media:/var/www/kbin/public/media
     env_file:
       - .env
     depends_on:
