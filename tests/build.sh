@@ -6,8 +6,6 @@ rm docker-compose.override.yml
 rm docker-compose.prod.yml
 rm docker-compose.yml
 sed -i "s~COPY package-lock.json \$KBIN_HOME~# COPY package-lock.json \$KBIN_HOME~g" ./Dockerfile
-sed -i "s~USER \$USER:\$GROUP~USER 0:0~g" ./Dockerfile
-sed -i "s~COPY --chown=\$USER:\$GROUP~COPY --chown=0:0~g" ./Dockerfile
 sed -i '/router.request_context.scheme: https/a \  asset.request_context.secure: true' ./config/services.yaml
 
 docker buildx build . --output type=docker,name=elestio4test/kbin:latest | docker load
